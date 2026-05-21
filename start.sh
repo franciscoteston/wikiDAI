@@ -1,0 +1,87 @@
+#!/usr/bin/env sh
+set -eu
+
+export DB_HOST="127.0.0.1"
+export DB_PORT="3306"
+export DB_DATABASE="${DB_DATABASE:-bookstack}"
+export DB_USERNAME="${DB_USERNAME:-bookstack}"
+export DB_PASSWORD="${DB_PASSWORD:-bookstack}"
+export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootbookstack}"
+
+export APP_URL="${APP_URL:-http://localhost:7860}"
+export APP_KEY="${APP_KEY:-}"
+export BOOKSTACK_ADMIN_NAME="${BOOKSTACK_ADMIN_NAME:-Admin Demo}"
+export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-admin@example.local}"
+export BOOKSTACK_ADMIN_PASSWORD="${BOOKSTACK_ADMIN_PASSWORD:-change-me-now}"
+
+# Persistência preferencial em /data quando disponível
+if [ -d "/data" ]; then
+  mkdir -p /data/mariadb /data/bookstack_uploads
+  chown -R abc:abc /data/mariadb /data/bookstack_uploads
+fi
+
+# Configuração MariaDB
+mkdir -p /run/mysqld
+chown -R mysql:mysql /run/mysqld
+
+if [ -d "/data/mariadb" ]; then
+  DB_DIR="/data/mariadb"
+else
+  DB_DIR="/config/mariadb"
+  mkdir -p "$DB_DIR"
+fi
+chown -R mysql:mysql "$DB_DIR"
+
+if [ ! -d "$DB_DIR/mysql" ]; then
+  mariadb-install-db --user=mysql --datadir="$DB_DIR" >/dev/null
+fi
+
+mariadbd --user=mysql --datadir="$DB_DIR" --bind-address=127.0.0.1 --port=3306 --socket=/run/mysqld/mysqld.sock &
+MYSQL_PID=$!
+
+# Espera banco
+for i in $(seq 1 60); do
+  if mariadb-admin ping -h 127.0.0.1 -uroot >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+mariadb -h 127.0.0.1 -uroot <<SQL
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
+CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'%';
+FLUSH PRIVILEGES;
+SQL
+
+# Configuração BookStack
+if [ -f /config/www/.env.example ] && [ ! -f /config/www/.env ]; then
+  cp /config/www/.env.example /config/www/.env
+fi
+
+php /config/www/artisan key:generate --force
+php /config/www/artisan migrate --force
+
+# Admin demo
+php /config/www/artisan bookstack:create-admin \
+  --name "${BOOKSTACK_ADMIN_NAME}" \
+  --email "${BOOKSTACK_ADMIN_EMAIL}" \
+  --password "${BOOKSTACK_ADMIN_PASSWORD}" || true
+
+# API token do admin para seed
+API_CREDS=$(php /config/www/artisan bookstack:api-token:create "${BOOKSTACK_ADMIN_EMAIL}" seed-token 2>/dev/null || true)
+API_ID=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token ID:[[:space:]]*//p' | head -n1)
+API_SECRET=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token Secret:[[:space:]]*//p' | head -n1)
+
+if [ -n "$API_ID" ] && [ -n "$API_SECRET" ]; then
+  export BOOKSTACK_API_TOKEN_ID="$API_ID"
+  export BOOKSTACK_API_TOKEN_SECRET="$API_SECRET"
+  python3 /config/www/scripts/seed_bookstack.py /config/www/seed/manual_banco_mercado.json || true
+fi
+
+# Inicia web server BookStack (container base usa s6/nginx/php-fpm)
+exec /init
+
+# Em caso de término do init, garante encerramento do mysql
+kill "$MYSQL_PID" >/dev/null 2>&1 || true
