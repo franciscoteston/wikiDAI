@@ -1,0 +1,14 @@
+# Ambiente
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs e runtime
+*.log
+*.pid
+
+# Dados locais opcionais
+/data/

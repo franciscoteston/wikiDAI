@@ -1,0 +1,56 @@
+{
+  "book": {
+    "name": "Manual do Banco de Dados de Mercado — DAI / SBDS",
+    "description": "Manual de coleta, inclusão e uso do Banco de Dados de Vendas e Aluguel"
+  },
+  "chapters": [
+    {
+      "name": "Introdução",
+      "pages": [
+        {
+          "name": "Atribuições da SBDS",
+          "markdown": "# Atribuições da SBDS\n\n## Objetivo\nEste manual orienta a coleta, inclusão e uso de dados de mercado imobiliário para suporte técnico da DAI.\n\n## Papel da coleta\nA coleta de informações subsidia laudos e pareceres técnicos, com foco em qualidade, consistência e rastreabilidade.\n\n## Atribuições da SBDS\n- Pesquisa, acompanhamento e análise de valores imobiliários de mercado para venda e aluguel.\n- Análise de consistência entre dados de mercado e cadastro imobiliário.\n- Atualização do banco de dados de mercado imobiliário e valores de imóveis.\n- Geocodificação de dados imobiliários para direcionar a coleta no território."
+        }
+      ]
+    },
+    {
+      "name": "Coleta de Dados",
+      "pages": [
+        {
+          "name": "Fontes e Restrições — NBR 14653-2",
+          "markdown": "# Fontes e Restrições — NBR 14653-2\n\n- Fontes admitidas: sites de imobiliárias, jornais e visitas a campo.\n- Toda oferta deve possuir origem comprovada.\n- Referência normativa: NBR 14653-2.\n- Evitar sites hospedeiros de ofertas quando houver risco de desatualização.\n- Descartar oferta repetida quando for o mesmo imóvel, mesmo valor e intervalo de até 3 meses."
+        },
+        {
+          "name": "Rotina de Coleta Passo a Passo",
+          "markdown": "# Rotina de Coleta Passo a Passo\n\n1. Pesquisar oferta.\n2. Localizar imóvel no GEO por logradouro e número.\n3. Confirmar localização com imagem/foto, quando possível.\n4. Consultar cadastro no SIAT.\n5. Consultar histórico de ofertas.\n6. Analisar consistência dos dados.\n7. Prosseguir à inclusão somente se houver convergência satisfatória das informações."
+        }
+      ]
+    },
+    {
+      "name": "Inclusão de Dados no SIAT",
+      "pages": [
+        {
+          "name": "Fluxo de Vendas — Guia PMI",
+          "markdown": "# Fluxo de Vendas — Guia PMI\n\n- Dados de venda devem ser adicionados ao Banco de Dados do SIAT, guia PMI.\n- Campos principais: data da oferta, observação da oferta, origem do registro, inscrição, finalidade, área territorial, testada e valor ofertado.\n- Aplicar regras para imóveis sem cadastro.\n- Aplicar regras para ofertas com guia ITBI.\n- Aplicar regras para terrenos com construções não consideradas.\n- Para dados prediais, registrar: dormitórios, sanitários, vagas, área construída total e área privativa."
+        },
+        {
+          "name": "Fluxo de Aluguel — Planilha MS Excel",
+          "markdown": "# Fluxo de Aluguel — Planilha MS Excel\n\n- Dados de aluguel devem ser adicionados à planilha individual do pesquisador.\n- Campos principais: ORD_PESQUISADOR, pesquisador, data, inscrição, CTM, logradouro, bairro, setor, quarteirão, RH, descrição, áreas, valor, condomínio, IPTU, observações, tipo de fonte, imobiliária, site/email, telefone e fotos.\n- Alguns campos são automáticos e outros são preenchidos a partir do SIAT.\n\n## Tabela resumida\n\n| Campo | Tipo |\n|---|---|\n| ORD_PESQUISADOR | Obrigatório |\n| pesquisador | Obrigatório |\n| data | Obrigatório |\n| inscrição | Obrigatório |\n| descrição | Obrigatório |\n| valor | Obrigatório |\n| condomínio | Opcional |\n| IPTU | Opcional |\n| observações | Opcional |\n| fotos | Opcional |"
+        }
+      ]
+    },
+    {
+      "name": "Uso e Atualização",
+      "pages": [
+        {
+          "name": "Banco de Dados de Terrenos",
+          "markdown": "# Banco de Dados de Terrenos\n\n- Finalidade: consolidar evidências para análise de valores de terrenos.\n- Atualização permanente com novos dados e revisão de dados existentes.\n- Atenção especial às colunas SIT REG e OBS Fiscal."
+        },
+        {
+          "name": "Convenções e Status — SIT REG / OBS Fiscal",
+          "markdown": "# Convenções e Status — SIT REG / OBS Fiscal\n\n- SIT REG old + OBS Fiscal DADO ATUALIZADO: preferencialmente não usar, salvo critério do avaliador.\n- SIT REG exc + OBS Fiscal NÃO USAR ESTE DADO: dado inconsistente; não usar.\n- Registro alterado: usar dado alterado com mesmo número de registro acrescido de -ALT.\n- SIT REG Ver OBS interna: ler observação antes de decidir uso.\n- SIT REG Ver OBS interna + VUNIT alto/baixo: possível especulação ou variação expressiva; usar com cuidado."
+        }
+      ]
+    }
+  ]
+}
