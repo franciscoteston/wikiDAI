@@ -1,8 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
-export DB_HOST="127.0.0.1"
+export DB_HOST="localhost"
 export DB_PORT="3306"
+export DB_SOCKET="/run/mysqld/mysqld.sock"
 export DB_DATABASE="${DB_DATABASE:-bookstack}"
 export DB_USERNAME="${DB_USERNAME:-bookstack}"
 export DB_PASSWORD="${DB_PASSWORD:-bookstack}"
@@ -36,18 +37,27 @@ if [ ! -d "$DB_DIR/mysql" ]; then
   mariadb-install-db --user=mysql --datadir="$DB_DIR" >/dev/null
 fi
 
-mariadbd --user=mysql --datadir="$DB_DIR" --bind-address=127.0.0.1 --port=3306 --socket=/run/mysqld/mysqld.sock &
+mariadbd --user=mysql --datadir="$DB_DIR" --socket="$DB_SOCKET" &
 MYSQL_PID=$!
 
 # Espera banco
+echo "Aguardando MariaDB via socket..."
+MYSQL_READY=0
 for i in $(seq 1 60); do
-  if mariadb-admin ping -h 127.0.0.1 -uroot >/dev/null 2>&1; then
+  if mariadb-admin ping --protocol=socket -S "$DB_SOCKET" -uroot >/dev/null 2>&1; then
+    MYSQL_READY=1
     break
   fi
   sleep 1
 done
 
-mariadb -h 127.0.0.1 -uroot <<SQL
+if [ "$MYSQL_READY" -ne 1 ]; then
+  echo "MariaDB não ficou disponível via socket em tempo hábil."
+  exit 1
+fi
+echo "MariaDB disponível."
+echo "Criando banco e usuário..."
+mariadb --protocol=socket -S "$DB_SOCKET" -uroot <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
 CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
@@ -61,6 +71,7 @@ if [ -f /config/www/.env.example ] && [ ! -f /config/www/.env ]; then
 fi
 
 php /config/www/artisan key:generate --force
+echo "Executando migrações BookStack..."
 php /config/www/artisan migrate --force
 
 # Admin demo
