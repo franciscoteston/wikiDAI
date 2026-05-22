@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-export DB_HOST="localhost"
+export DB_HOST="127.0.0.1"
 export DB_PORT="3306"
 export DB_SOCKET="/run/mysqld/mysqld.sock"
 export DB_DATABASE="${DB_DATABASE:-bookstack}"
@@ -9,7 +9,7 @@ export DB_USERNAME="${DB_USERNAME:-bookstack}"
 export DB_PASSWORD="${DB_PASSWORD:-bookstack}"
 export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootbookstack}"
 
-export APP_URL="${APP_URL:-http://localhost:7860}"
+export APP_URL="${APP_URL:-https://franciscoteston-wikidai.hf.space}"
 export APP_KEY="${APP_KEY:-}"
 export BOOKSTACK_ADMIN_NAME="${BOOKSTACK_ADMIN_NAME:-Admin Demo}"
 export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-admin@example.local}"
@@ -37,7 +37,13 @@ if [ ! -d "$DB_DIR/mysql" ]; then
   mariadb-install-db --user=mysql --datadir="$DB_DIR" >/dev/null
 fi
 
-mariadbd --user=mysql --datadir="$DB_DIR" --socket="$DB_SOCKET" &
+mariadbd \
+  --user=mysql \
+  --datadir="$DB_DIR" \
+  --socket="$DB_SOCKET" \
+  --skip-networking=0 \
+  --bind-address=127.0.0.1 \
+  --port=3306 &
 MYSQL_PID=$!
 
 # Espera banco
@@ -66,22 +72,22 @@ FLUSH PRIVILEGES;
 SQL
 
 # Configuração BookStack
-if [ -f /config/www/.env.example ] && [ ! -f /config/www/.env ]; then
-  cp /config/www/.env.example /config/www/.env
+if [ -f /app/www/.env.example ] && [ ! -f /config/www/.env ]; then
+  cp /app/www/.env.example /config/www/.env
 fi
 
-php /config/www/artisan key:generate --force
+php /app/www/artisan key:generate --force
 echo "Executando migrações BookStack..."
-php /config/www/artisan migrate --force
+php /app/www/artisan migrate --force
 
 # Admin demo
-php /config/www/artisan bookstack:create-admin \
+php /app/www/artisan bookstack:create-admin \
   --name "${BOOKSTACK_ADMIN_NAME}" \
   --email "${BOOKSTACK_ADMIN_EMAIL}" \
   --password "${BOOKSTACK_ADMIN_PASSWORD}" || true
 
 # API token do admin para seed
-API_CREDS=$(php /config/www/artisan bookstack:api-token:create "${BOOKSTACK_ADMIN_EMAIL}" seed-token 2>/dev/null || true)
+API_CREDS=$(php /app/www/artisan bookstack:api-token:create "${BOOKSTACK_ADMIN_EMAIL}" seed-token 2>/dev/null || true)
 API_ID=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token ID:[[:space:]]*//p' | head -n1)
 API_SECRET=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token Secret:[[:space:]]*//p' | head -n1)
 
