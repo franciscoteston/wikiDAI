@@ -80,53 +80,11 @@ FLUSH PRIVILEGES;
 SQL
 
 # Configuração BookStack
-echo "Preparando diretórios Laravel..."
-ensure_dir() {
-  path="$1"
-
-  if [ -L "$path" ]; then
-    target=$(readlink "$path")
-    case "$target" in
-      /*) ;;
-      *) target="$(dirname "$path")/$target" ;;
-    esac
-    ensure_dir "$target"
-    return
-  fi
-
-  if [ -d "$path" ]; then
-    return
-  fi
-
-  if [ -e "$path" ]; then
-    rm -f "$path"
-  fi
-
-  mkdir -p "$path"
-}
-
-ensure_dir /app/www/storage
-ensure_dir /app/www/storage/logs
-ensure_dir /app/www/storage/framework
-ensure_dir /app/www/storage/framework/cache
-ensure_dir /app/www/storage/framework/cache/data
-ensure_dir /app/www/storage/framework/sessions
-ensure_dir /app/www/storage/framework/views
-ensure_dir /app/www/bootstrap
-ensure_dir /app/www/bootstrap/cache
-
-touch /app/www/storage/logs/laravel.log
-chown abc:abc /app/www/storage/logs/laravel.log || true
-chmod ug+rw /app/www/storage/logs/laravel.log || true
-
-chown -R abc:abc /app/www/storage /app/www/bootstrap/cache || true
-chmod -R ug+rwX /app/www/storage /app/www/bootstrap/cache || true
-
-
 echo "Configurando .env do BookStack..."
 if [ -f /app/www/.env.example ] && [ ! -f /config/www/.env ]; then
   cp /app/www/.env.example /config/www/.env
 fi
+
 if [ ! -e /app/www/.env ]; then
   ln -s /config/www/.env /app/www/.env
 fi
@@ -152,18 +110,60 @@ upsert_env_var "DB_PASSWORD" "${DB_PASSWORD}" "/config/www/.env"
 upsert_env_var "DB_SOCKET" "" "/config/www/.env"
 upsert_env_var "LOG_CHANNEL" "stderr" "/config/www/.env"
 
-echo "Gerando APP_KEY..."
-php /app/www/artisan key:generate --force
-echo "Executando migrações BookStack..."
-php /app/www/artisan migrate --force
+echo "Iniciando proxy local 7860 -> 80..."
+socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
+PROXY_PID=$!
 
-# Admin demo
+echo "Iniciando /init em background..."
+/init &
+INIT_PID=$!
+
+echo "Aguardando BookStack responder..."
+BOOKSTACK_READY=0
+for i in $(seq 1 120); do
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1/api/docs" >/dev/null 2>&1 || curl -fsS "http://127.0.0.1" >/dev/null 2>&1; then
+      BOOKSTACK_READY=1
+      break
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if wget -q -O - "http://127.0.0.1/api/docs" >/dev/null 2>&1 || wget -q -O - "http://127.0.0.1" >/dev/null 2>&1; then
+      BOOKSTACK_READY=1
+      break
+    fi
+  else
+    if python3 - <<'PY' >/dev/null 2>&1
+import urllib.request
+for url in ("http://127.0.0.1/api/docs", "http://127.0.0.1"):
+    try:
+        with urllib.request.urlopen(url, timeout=2) as r:
+            if r.status < 500:
+                raise SystemExit(0)
+    except Exception:
+        pass
+raise SystemExit(1)
+PY
+    then
+      BOOKSTACK_READY=1
+      break
+    fi
+  fi
+  sleep 1
+done
+
+if [ "$BOOKSTACK_READY" -ne 1 ]; then
+  echo "BookStack não respondeu em até 120 segundos."
+  wait "$INIT_PID"
+  exit 1
+fi
+
+echo "BookStack disponível."
+
 php /app/www/artisan bookstack:create-admin \
   --name "${BOOKSTACK_ADMIN_NAME}" \
   --email "${BOOKSTACK_ADMIN_EMAIL}" \
   --password "${BOOKSTACK_ADMIN_PASSWORD}" || true
 
-# API token do admin para seed
 API_CREDS=$(php /app/www/artisan bookstack:api-token:create "${BOOKSTACK_ADMIN_EMAIL}" seed-token 2>/dev/null || true)
 API_ID=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token ID:[[:space:]]*//p' | head -n1)
 API_SECRET=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token Secret:[[:space:]]*//p' | head -n1)
@@ -171,15 +171,13 @@ API_SECRET=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token Secret:[[:space:]]*//p
 if [ -n "$API_ID" ] && [ -n "$API_SECRET" ]; then
   export BOOKSTACK_API_TOKEN_ID="$API_ID"
   export BOOKSTACK_API_TOKEN_SECRET="$API_SECRET"
-  python3 /config/www/scripts/seed_bookstack.py /config/www/seed/manual_banco_mercado.json || true
+  export BOOKSTACK_API_URL="http://127.0.0.1"
+  python3 /config/www/scripts/seed_bookstack.py /config/www/seed/manual_banco_mercado.json || {
+    echo "Seed falhou (MVP): seguindo execução sem bloquear startup."
+    true
+  }
+else
+  echo "Token de API não gerado; seed não será executado (MVP)."
 fi
 
-echo "Iniciando proxy local 7860 -> 80..."
-socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
-PROXY_PID=$!
-
-# Inicia web server BookStack (container base usa s6/nginx/php-fpm)
-exec /init
-
-# Em caso de término do init, garante encerramento do mysql
-kill "$MYSQL_PID" >/dev/null 2>&1 || true
+wait "$INIT_PID"
