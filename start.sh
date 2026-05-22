@@ -210,18 +210,12 @@ PY
     --email "${BOOKSTACK_ADMIN_EMAIL}" \
     --password "${BOOKSTACK_ADMIN_PASSWORD}" || echo "Falha ao criar admin (MVP)."
 
-  API_CREDS=$(php /app/www/artisan bookstack:api-token:create "${BOOKSTACK_ADMIN_EMAIL}" seed-token 2>/dev/null || true)
-  API_ID=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token ID:[[:space:]]*//p' | head -n1)
-  API_SECRET=$(printf '%s' "$API_CREDS" | sed -n 's/.*Token Secret:[[:space:]]*//p' | head -n1)
-
-  if [ -n "$API_ID" ] && [ -n "$API_SECRET" ]; then
-    export BOOKSTACK_API_TOKEN_ID="$API_ID"
-    export BOOKSTACK_API_TOKEN_SECRET="$API_SECRET"
+  if [ -n "${BOOKSTACK_API_TOKEN_ID:-}" ] && [ -n "${BOOKSTACK_API_TOKEN_SECRET:-}" ]; then
     export BOOKSTACK_API_URL="http://127.0.0.1"
     python3 /config/www/scripts/seed_bookstack.py /config/www/seed/manual_banco_mercado.json || \
       echo "Seed falhou (MVP): seguindo execução sem bloquear startup."
   else
-    echo "Token de API não gerado; seed não será executado (MVP)."
+    echo "BOOKSTACK_API_TOKEN_ID/SECRET não configurados; seed não executado."
   fi
 ) &
 
