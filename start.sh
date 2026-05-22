@@ -13,9 +13,9 @@ USE_DATA_FOR_DB="${USE_DATA_FOR_DB:-false}"
 
 export APP_URL="${APP_URL:-https://franciscoteston-wikidai.hf.space}"
 export APP_KEY="${APP_KEY:-}"
-export BOOKSTACK_ADMIN_NAME="${BOOKSTACK_ADMIN_NAME:-Admin Demo}"
-export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-admin@example.com}"
-export BOOKSTACK_ADMIN_PASSWORD="${BOOKSTACK_ADMIN_PASSWORD:-change-me-now}"
+export BOOKSTACK_ADMIN_NAME="${BOOKSTACK_ADMIN_NAME:-}"
+export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-}"
+export BOOKSTACK_ADMIN_PASSWORD="${BOOKSTACK_ADMIN_PASSWORD:-}"
 
 if [ -z "${APP_KEY:-}" ]; then
   echo "ERRO: APP_KEY não definida. Configure APP_KEY como Secret no Hugging Face Space."
@@ -147,22 +147,20 @@ upsert_env_var "DB_PASSWORD" "${DB_PASSWORD}" "/config/www/.env"
 upsert_env_var "DB_SOCKET" "" "/config/www/.env"
 upsert_env_var "LOG_CHANNEL" "stderr" "/config/www/.env"
 
-RUN_AUX_PROCESS=1
-if ! printf '%s' "$BOOKSTACK_ADMIN_EMAIL" | grep -q '@'; then
-  echo "ERRO: BOOKSTACK_ADMIN_EMAIL inválido. O valor deve conter '@'."
-  RUN_AUX_PROCESS=0
-fi
-
-if [ "$(printf '%s' "$BOOKSTACK_ADMIN_PASSWORD" | wc -c)" -lt 8 ]; then
-  echo "ERRO: BOOKSTACK_ADMIN_PASSWORD inválido. A senha deve ter no mínimo 8 caracteres."
-  RUN_AUX_PROCESS=0
+RUN_CREATE_ADMIN=0
+if [ -n "$BOOKSTACK_ADMIN_EMAIL" ] || [ -n "$BOOKSTACK_ADMIN_PASSWORD" ]; then
+  if [ -z "$BOOKSTACK_ADMIN_EMAIL" ] || [ -z "$BOOKSTACK_ADMIN_PASSWORD" ]; then
+    echo "ERRO: Defina BOOKSTACK_ADMIN_EMAIL e BOOKSTACK_ADMIN_PASSWORD juntos para criar admin customizado."
+  elif ! printf '%s' "$BOOKSTACK_ADMIN_EMAIL" | grep -q '@'; then
+    echo "ERRO: BOOKSTACK_ADMIN_EMAIL inválido. O valor deve conter '@'."
+  elif [ "$(printf '%s' "$BOOKSTACK_ADMIN_PASSWORD" | wc -c)" -lt 8 ]; then
+    echo "ERRO: BOOKSTACK_ADMIN_PASSWORD inválido. A senha deve ter no mínimo 8 caracteres."
+  else
+    RUN_CREATE_ADMIN=1
+  fi
 fi
 
 (
-  if [ "$RUN_AUX_PROCESS" -ne 1 ]; then
-    echo "Processo auxiliar desativado por configuração inválida de admin."
-    exit 0
-  fi
 
   echo "Processo auxiliar: aguardando BookStack responder localmente..."
   BOOKSTACK_READY=0
@@ -207,10 +205,24 @@ PY
 
   echo "Proxy iniciado; executando bootstrap de admin/seed..."
 
-  php /app/www/artisan bookstack:create-admin \
-    --name "${BOOKSTACK_ADMIN_NAME}" \
-    --email "${BOOKSTACK_ADMIN_EMAIL}" \
-    --password "${BOOKSTACK_ADMIN_PASSWORD}" || echo "Falha ao criar admin (MVP)."
+  if [ "$RUN_CREATE_ADMIN" -eq 1 ]; then
+    set +e
+    ADMIN_CREATE_OUTPUT=$(php /app/www/artisan bookstack:create-admin       --name "${BOOKSTACK_ADMIN_NAME:-Admin}"       --email "${BOOKSTACK_ADMIN_EMAIL}"       --password "${BOOKSTACK_ADMIN_PASSWORD}" 2>&1)
+    ADMIN_CREATE_STATUS=$?
+    set -e
+    printf '%s
+' "$ADMIN_CREATE_OUTPUT"
+
+    if [ "$ADMIN_CREATE_STATUS" -eq 0 ]; then
+      echo "Admin customizado criado com sucesso."
+    elif printf '%s' "$ADMIN_CREATE_OUTPUT" | grep -Eiq 'already exists|já existe'; then
+      echo "Admin já existe; seguindo."
+    else
+      echo "Falha ao criar admin customizado; seguindo startup."
+    fi
+  else
+    echo "Admin customizado não configurado; usando admin padrão do BookStack em instalação fresca."
+  fi
 
   if [ -n "${BOOKSTACK_API_TOKEN_ID:-}" ] && [ -n "${BOOKSTACK_API_TOKEN_SECRET:-}" ]; then
     export BOOKSTACK_API_URL="http://127.0.0.1"
