@@ -9,6 +9,7 @@ export DB_USERNAME="${DB_USERNAME:-bookstack}"
 export DB_PASSWORD="${DB_PASSWORD:-bookstack}"
 export DB_SOCKET=""
 export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootbookstack}"
+USE_DATA_FOR_DB="${USE_DATA_FOR_DB:-false}"
 
 export APP_URL="${APP_URL:-https://franciscoteston-wikidai.hf.space}"
 export APP_KEY="${APP_KEY:-}"
@@ -21,18 +22,19 @@ if [ -z "${APP_KEY:-}" ]; then
   exit 1
 fi
 
-# Persistência preferencial em /data quando disponível
+# Persistência opcional em /data (uploads no MVP; banco somente quando explicitamente habilitado)
 if [ -d "/data" ]; then
-  mkdir -p /data/mariadb /data/bookstack_uploads
-  chown -R abc:abc /data/mariadb /data/bookstack_uploads
+  mkdir -p /data/bookstack_uploads
+  chown -R abc:abc /data/bookstack_uploads
 fi
 
 # Configuração MariaDB
 mkdir -p /run/mysqld
 chown -R mysql:mysql /run/mysqld
 
-if [ -d "/data/mariadb" ]; then
+if [ "${USE_DATA_FOR_DB}" = "true" ] && [ -d "/data" ]; then
   DB_DIR="/data/mariadb"
+  mkdir -p "$DB_DIR"
 else
   DB_DIR="/config/mariadb"
   mkdir -p "$DB_DIR"
