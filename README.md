@@ -39,7 +39,6 @@ Exemplo mínimo para execução local/Space:
 
 ```bash
 APP_URL=https://franciscoteston-wikidai.hf.space
-APP_KEY=
 BOOKSTACK_ADMIN_NAME=Admin Demo
 BOOKSTACK_ADMIN_EMAIL=
 BOOKSTACK_ADMIN_PASSWORD=
