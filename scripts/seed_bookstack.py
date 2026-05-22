@@ -7,7 +7,8 @@ import urllib.request
 
 
 def api_request(method, path, payload=None, query=None):
-    base = os.environ.get("APP_URL", "http://localhost:7860").rstrip("/")
+    base = os.environ.get("BOOKSTACK_API_URL") or os.environ.get("APP_URL", "http://localhost:7860")
+    base = base.rstrip("/")
     token_id = os.environ["BOOKSTACK_API_TOKEN_ID"]
     token_secret = os.environ["BOOKSTACK_API_TOKEN_SECRET"]
 
