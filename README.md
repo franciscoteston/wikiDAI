@@ -58,11 +58,12 @@ Observações:
 - Em instalação fresca, faça login com `admin@admin.com` e senha `password` (altere imediatamente após o primeiro acesso).
 - Para criar admin customizado, defina **ambas** `BOOKSTACK_ADMIN_EMAIL` e `BOOKSTACK_ADMIN_PASSWORD` (opcionalmente `BOOKSTACK_ADMIN_NAME`).
 - `BOOKSTACK_API_TOKEN_ID` e `BOOKSTACK_API_TOKEN_SECRET` devem vir dos Secrets do Hugging Face, criados pela interface do BookStack.
-- `USE_DATA_FOR_DB=false` é o padrão recomendado, incluindo para demo no Hugging Face.
-- Use `USE_DATA_FOR_DB=true` apenas se o volume `/data` tiver permissões de escrita/leitura para o usuário `mysql`.
+- `USE_DATA_FOR_DB=false` é o padrão recomendado no MVP Hugging Face, com banco efêmero em `/tmp/wikidai-mariadb`.
+- Para persistência real do banco, prefira banco externo (gerenciado) ou valide um volume dedicado com permissões corretas para o usuário `mysql`.
+- `USE_DATA_FOR_DB=true` é experimental e usa `/data/mariadb`.
 - No MVP, `/data` pode ser usado para uploads em `/data/bookstack_uploads` sem mover o banco.
 - `RESET_DB_ON_START=true` deve ser usado somente em ambiente de demonstração para reset controlado do MariaDB.
-- Após o primeiro boot bem-sucedido, remova essa variável ou defina `RESET_DB_ON_START=false`.
+- Com `USE_DATA_FOR_DB=false`, reinícios frios já recriam o banco efêmero em `/tmp`; `RESET_DB_ON_START` continua disponível para forçar reset no mesmo ciclo de execução.
 
 ## Como testar localmente
 

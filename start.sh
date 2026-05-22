@@ -32,13 +32,15 @@ fi
 mkdir -p /run/mysqld
 chown -R mysql:mysql /run/mysqld
 
-if [ "${USE_DATA_FOR_DB}" = "true" ] && [ -d "/data" ]; then
+if [ "${USE_DATA_FOR_DB}" = "true" ]; then
   DB_DIR="/data/mariadb"
-  mkdir -p "$DB_DIR"
 else
-  DB_DIR="/config/mariadb"
-  mkdir -p "$DB_DIR"
+  DB_DIR="/tmp/wikidai-mariadb"
 fi
+echo "Usando DB_DIR=$DB_DIR"
+mkdir -p "$DB_DIR"
+chown -R mysql:mysql "$DB_DIR"
+chmod -R 700 "$DB_DIR" || true
 
 if [ "${RESET_DB_ON_START:-false}" = "true" ]; then
   echo "ATENÇÃO: RESET_DB_ON_START=true; apagando banco MariaDB em $DB_DIR"
@@ -48,9 +50,11 @@ if [ "${RESET_DB_ON_START:-false}" = "true" ]; then
   rm -rf "$DB_DIR"
   mkdir -p "$DB_DIR"
   chown -R mysql:mysql "$DB_DIR"
+  chmod -R 700 "$DB_DIR" || true
 fi
 
 chown -R mysql:mysql "$DB_DIR"
+chmod -R 700 "$DB_DIR" || true
 
 if [ ! -d "$DB_DIR/mysql" ]; then
   mariadb-install-db --user=mysql --datadir="$DB_DIR" >/dev/null
