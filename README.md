@@ -46,6 +46,7 @@ DB_DATABASE=bookstack
 DB_USERNAME=bookstack
 DB_PASSWORD=bookstack
 DB_ROOT_PASSWORD=rootbookstack
+USE_DATA_FOR_DB=false
 BOOKSTACK_API_TOKEN_ID=
 BOOKSTACK_API_TOKEN_SECRET=
 ```
@@ -54,6 +55,9 @@ Observações:
 - `APP_KEY` pode ser vazio: o `start.sh` gera automaticamente com `php artisan key:generate`.
 - Em deploy público, use segredos do ambiente (HF Secrets) para senhas.
 - `BOOKSTACK_API_TOKEN_ID` e `BOOKSTACK_API_TOKEN_SECRET` devem vir dos Secrets do Hugging Face.
+- `USE_DATA_FOR_DB=false` é o padrão recomendado, incluindo para demo no Hugging Face.
+- Use `USE_DATA_FOR_DB=true` apenas se o volume `/data` tiver permissões de escrita/leitura para o usuário `mysql`.
+- No MVP, `/data` pode ser usado para uploads em `/data/bookstack_uploads` sem mover o banco.
 - `RESET_DB_ON_START=true` deve ser usado somente em ambiente de demonstração para reset controlado do MariaDB.
 - Após o primeiro boot bem-sucedido, remova essa variável ou defina `RESET_DB_ON_START=false`.
 
