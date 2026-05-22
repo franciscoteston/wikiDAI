@@ -13,7 +13,7 @@ export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootbookstack}"
 export APP_URL="${APP_URL:-https://franciscoteston-wikidai.hf.space}"
 export APP_KEY="${APP_KEY:-}"
 export BOOKSTACK_ADMIN_NAME="${BOOKSTACK_ADMIN_NAME:-Admin Demo}"
-export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-admin@example.local}"
+export BOOKSTACK_ADMIN_EMAIL="${BOOKSTACK_ADMIN_EMAIL:-admin@example.com}"
 export BOOKSTACK_ADMIN_PASSWORD="${BOOKSTACK_ADMIN_PASSWORD:-change-me-now}"
 
 if [ -z "${APP_KEY:-}" ]; then
@@ -135,7 +135,23 @@ upsert_env_var "LOG_CHANNEL" "stderr" "/config/www/.env"
 echo "Iniciando proxy local 7860 -> 80..."
 socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
 
+RUN_AUX_PROCESS=1
+if ! printf '%s' "$BOOKSTACK_ADMIN_EMAIL" | grep -q '@'; then
+  echo "ERRO: BOOKSTACK_ADMIN_EMAIL inválido. O valor deve conter '@'."
+  RUN_AUX_PROCESS=0
+fi
+
+if [ "$(printf '%s' "$BOOKSTACK_ADMIN_PASSWORD" | wc -c)" -lt 8 ]; then
+  echo "ERRO: BOOKSTACK_ADMIN_PASSWORD inválido. A senha deve ter no mínimo 8 caracteres."
+  RUN_AUX_PROCESS=0
+fi
+
 (
+  if [ "$RUN_AUX_PROCESS" -ne 1 ]; then
+    echo "Processo auxiliar desativado por configuração inválida de admin."
+    exit 0
+  fi
+
   echo "Processo auxiliar: aguardando BookStack responder..."
   for i in $(seq 1 300); do
     if command -v curl >/dev/null 2>&1; then
