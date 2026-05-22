@@ -1,7 +1,7 @@
 ---
 title: wikiDAI
 sdk: docker
-app_port: 7860
+app_port: 80
 ---
 
 # wikiDAI (MVP com BookStack no Hugging Face Space)
@@ -37,7 +37,7 @@ Subir o BookStack em um Docker Space e semear automaticamente um conteúdo inici
 Exemplo mínimo para execução local/Space:
 
 ```bash
-APP_URL=http://localhost:7860
+APP_URL=https://franciscoteston-wikidai.hf.space
 APP_KEY=
 BOOKSTACK_ADMIN_NAME=Admin Demo
 BOOKSTACK_ADMIN_EMAIL=admin@example.local
@@ -63,8 +63,8 @@ docker build -t wikidai:local .
 2. Rodar container:
 
 ```bash
-docker run --rm -p 7860:7860 \
-  -e APP_URL=http://localhost:7860 \
+docker run --rm -p 7860:80 \
+  -e APP_URL=https://franciscoteston-wikidai.hf.space \
   -e BOOKSTACK_ADMIN_NAME='Admin Demo' \
   -e BOOKSTACK_ADMIN_EMAIL='admin@example.local' \
   -e BOOKSTACK_ADMIN_PASSWORD='trocar-esta-senha' \
@@ -77,7 +77,7 @@ docker run --rm -p 7860:7860 \
 
 3. Acessar:
 
-- BookStack: `http://localhost:7860`
+- BookStack: `http://localhost:7860` (mapeando a porta interna 80 para 7860 localmente)
 
 4. Verificar seed:
 
@@ -94,7 +94,7 @@ docker run --rm -p 7860:7860 \
    - `BOOKSTACK_ADMIN_PASSWORD`
    - `DB_PASSWORD`
    - `DB_ROOT_PASSWORD`
-4. Iniciar o Space; a aplicação sobe na porta `7860`.
+4. Iniciar o Space; a aplicação sobe na porta `80`.
 
 ## Idempotência do seed
 

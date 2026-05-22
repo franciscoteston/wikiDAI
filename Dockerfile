@@ -13,6 +13,6 @@ COPY docs/estrutura-bookstack.md /config/www/docs/estrutura-bookstack.md
 
 RUN chmod +x /start.sh /config/www/scripts/seed_bookstack.py
 
-EXPOSE 7860
+EXPOSE 80
 
 ENTRYPOINT ["/start.sh"]
