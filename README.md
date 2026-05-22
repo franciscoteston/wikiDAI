@@ -105,17 +105,17 @@ docker run --rm -p 7860:80 \
    - `BOOKSTACK_API_TOKEN_SECRET`
 4. Iniciar o Space; a aplicação sobe na porta `80`.
 
-### Configurar token de API para seed automático
+### Configurar token de API e executar seed manual via GitHub Actions
 
 Como o comando `bookstack:api-token:create` não é utilizado no bootstrap, o token precisa ser criado manualmente pela interface do BookStack:
 
 1. Em instalação fresca, acesse o Space e faça login com `admin@admin.com` / `password`.
 2. Na interface do BookStack, crie um token de API para esse usuário.
 3. Copie o **Token ID** e o **Token Secret** gerados.
-4. Adicione os valores como Secrets no Hugging Face Space:
+4. No GitHub do repositório, adicione os Secrets em **Settings > Secrets and variables > Actions > Repository secrets**:
    - `BOOKSTACK_API_TOKEN_ID`
    - `BOOKSTACK_API_TOKEN_SECRET`
-5. Reinicie o Space para executar o seed automático com essas credenciais.
+5. Execute o seed manual sem reiniciar o Space em **Actions > Seed BookStack > Run workflow**.
 
 ## Idempotência do seed
 
