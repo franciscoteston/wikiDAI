@@ -124,6 +124,8 @@ upsert_env_var() {
 
 upsert_env_var "APP_URL" "${APP_URL}" "/config/www/.env"
 upsert_env_var "APP_KEY" "${APP_KEY}" "/config/www/.env"
+upsert_env_var "APP_ENV" "${APP_ENV:-production}" "/config/www/.env"
+upsert_env_var "APP_DEBUG" "${APP_DEBUG:-false}" "/config/www/.env"
 upsert_env_var "DB_HOST" "127.0.0.1" "/config/www/.env"
 upsert_env_var "DB_PORT" "3306" "/config/www/.env"
 upsert_env_var "DB_DATABASE" "${DB_DATABASE}" "/config/www/.env"
