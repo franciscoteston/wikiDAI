@@ -73,14 +73,43 @@ SQL
 
 # Configuração BookStack
 echo "Preparando diretórios Laravel..."
-mkdir -p \
-  /app/www/storage/logs \
-  /app/www/storage/framework/cache/data \
-  /app/www/storage/framework/sessions \
-  /app/www/storage/framework/views \
-  /app/www/bootstrap/cache
-chown -R abc:abc /app/www/storage /app/www/bootstrap/cache
-chmod -R ug+rwX /app/www/storage /app/www/bootstrap/cache
+ensure_dir() {
+  path="$1"
+
+  if [ -L "$path" ]; then
+    target=$(readlink "$path")
+    case "$target" in
+      /*) ;;
+      *) target="$(dirname "$path")/$target" ;;
+    esac
+    ensure_dir "$target"
+    return
+  fi
+
+  if [ -d "$path" ]; then
+    return
+  fi
+
+  if [ -e "$path" ]; then
+    rm -f "$path"
+  fi
+
+  mkdir -p "$path"
+}
+
+ensure_dir /app/www/storage
+ensure_dir /app/www/storage/logs
+ensure_dir /app/www/storage/framework
+ensure_dir /app/www/storage/framework/cache
+ensure_dir /app/www/storage/framework/cache/data
+ensure_dir /app/www/storage/framework/sessions
+ensure_dir /app/www/storage/framework/views
+ensure_dir /app/www/bootstrap
+ensure_dir /app/www/bootstrap/cache
+
+chown -R abc:abc /app/www/storage /app/www/bootstrap/cache || true
+chmod -R ug+rwX /app/www/storage /app/www/bootstrap/cache || true
+
 
 echo "Configurando .env do BookStack..."
 if [ -f /app/www/.env.example ] && [ ! -f /config/www/.env ]; then
