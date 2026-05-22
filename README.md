@@ -46,11 +46,14 @@ DB_DATABASE=bookstack
 DB_USERNAME=bookstack
 DB_PASSWORD=bookstack
 DB_ROOT_PASSWORD=rootbookstack
+BOOKSTACK_API_TOKEN_ID=
+BOOKSTACK_API_TOKEN_SECRET=
 ```
 
 Observações:
 - `APP_KEY` pode ser vazio: o `start.sh` gera automaticamente com `php artisan key:generate`.
 - Em deploy público, use segredos do ambiente (HF Secrets) para senhas.
+- `BOOKSTACK_API_TOKEN_ID` e `BOOKSTACK_API_TOKEN_SECRET` devem vir dos Secrets do Hugging Face.
 - `RESET_DB_ON_START=true` deve ser usado somente em ambiente de demonstração para reset controlado do MariaDB.
 - Após o primeiro boot bem-sucedido, remova essa variável ou defina `RESET_DB_ON_START=false`.
 
@@ -96,7 +99,21 @@ docker run --rm -p 7860:80 \
    - `BOOKSTACK_ADMIN_PASSWORD`
    - `DB_PASSWORD`
    - `DB_ROOT_PASSWORD`
+   - `BOOKSTACK_API_TOKEN_ID`
+   - `BOOKSTACK_API_TOKEN_SECRET`
 4. Iniciar o Space; a aplicação sobe na porta `80`.
+
+### Configurar token de API para seed automático
+
+Como o comando `bookstack:api-token:create` não é utilizado no bootstrap, o token precisa ser criado manualmente pela interface do BookStack:
+
+1. Acesse o Space e faça login com o usuário admin.
+2. Na interface do BookStack, crie um token de API para esse usuário.
+3. Copie o **Token ID** e o **Token Secret** gerados.
+4. Adicione os valores como Secrets no Hugging Face Space:
+   - `BOOKSTACK_API_TOKEN_ID`
+   - `BOOKSTACK_API_TOKEN_SECRET`
+5. Reinicie o Space para executar o seed automático com essas credenciais.
 
 ## Idempotência do seed
 
