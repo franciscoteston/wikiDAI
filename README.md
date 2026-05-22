@@ -1,7 +1,7 @@
 ---
 title: wikiDAI
 sdk: docker
-app_port: 80
+app_port: 7860
 ---
 
 # wikiDAI (MVP com BookStack no Hugging Face Space)

@@ -97,6 +97,10 @@ if [ -n "$API_ID" ] && [ -n "$API_SECRET" ]; then
   python3 /config/www/scripts/seed_bookstack.py /config/www/seed/manual_banco_mercado.json || true
 fi
 
+echo "Iniciando proxy local 7860 -> 80..."
+socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
+PROXY_PID=$!
+
 # Inicia web server BookStack (container base usa s6/nginx/php-fpm)
 exec /init
 
