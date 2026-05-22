@@ -72,10 +72,25 @@ FLUSH PRIVILEGES;
 SQL
 
 # Configuração BookStack
+echo "Preparando diretórios Laravel..."
+mkdir -p \
+  /app/www/storage/logs \
+  /app/www/storage/framework/cache/data \
+  /app/www/storage/framework/sessions \
+  /app/www/storage/framework/views \
+  /app/www/bootstrap/cache
+chown -R abc:abc /app/www/storage /app/www/bootstrap/cache
+chmod -R ug+rwX /app/www/storage /app/www/bootstrap/cache
+
+echo "Configurando .env do BookStack..."
 if [ -f /app/www/.env.example ] && [ ! -f /config/www/.env ]; then
   cp /app/www/.env.example /config/www/.env
 fi
+if [ ! -e /app/www/.env ]; then
+  ln -s /config/www/.env /app/www/.env
+fi
 
+echo "Gerando APP_KEY..."
 php /app/www/artisan key:generate --force
 echo "Executando migrações BookStack..."
 php /app/www/artisan migrate --force
