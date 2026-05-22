@@ -117,6 +117,17 @@ Como o comando `bookstack:api-token:create` não é utilizado no bootstrap, o to
    - `BOOKSTACK_API_TOKEN_SECRET`
 5. Execute o seed manual sem reiniciar o Space em **Actions > Seed BookStack > Run workflow**.
 
+### Uso rápido do workflow manual (sem deploy)
+
+- Workflow: **Seed BookStack** (`.github/workflows/seed-bookstack.yml`).
+- Gatilho: `workflow_dispatch` (execução manual pela aba Actions).
+- O workflow **não faz deploy** e **não reinicia** o Hugging Face Space; ele apenas chama a API pública do Space já em execução.
+- Comando executado:
+
+```bash
+python3 scripts/seed_bookstack.py seed/manual_banco_mercado.json
+```
+
 ## Idempotência do seed
 
 O script de seed:
