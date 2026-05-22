@@ -37,6 +37,17 @@ else
   DB_DIR="/config/mariadb"
   mkdir -p "$DB_DIR"
 fi
+
+if [ "${RESET_DB_ON_START:-false}" = "true" ]; then
+  echo "ATENÇÃO: RESET_DB_ON_START=true; apagando banco MariaDB em $DB_DIR"
+  if [ -S "$MYSQL_SOCKET" ]; then
+    mariadb-admin --protocol=socket -S "$MYSQL_SOCKET" -uroot shutdown >/dev/null 2>&1 || true
+  fi
+  rm -rf "$DB_DIR"
+  mkdir -p "$DB_DIR"
+  chown -R mysql:mysql "$DB_DIR"
+fi
+
 chown -R mysql:mysql "$DB_DIR"
 
 if [ ! -d "$DB_DIR/mysql" ]; then

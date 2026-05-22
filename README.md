@@ -51,6 +51,8 @@ DB_ROOT_PASSWORD=rootbookstack
 Observações:
 - `APP_KEY` pode ser vazio: o `start.sh` gera automaticamente com `php artisan key:generate`.
 - Em deploy público, use segredos do ambiente (HF Secrets) para senhas.
+- `RESET_DB_ON_START=true` deve ser usado somente em ambiente de demonstração para reset controlado do MariaDB.
+- Após o primeiro boot bem-sucedido, remova essa variável ou defina `RESET_DB_ON_START=false`.
 
 ## Como testar localmente
 
