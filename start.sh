@@ -145,9 +145,6 @@ upsert_env_var "DB_PASSWORD" "${DB_PASSWORD}" "/config/www/.env"
 upsert_env_var "DB_SOCKET" "" "/config/www/.env"
 upsert_env_var "LOG_CHANNEL" "stderr" "/config/www/.env"
 
-echo "Iniciando proxy local 7860 -> 80..."
-socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
-
 RUN_AUX_PROCESS=1
 if ! printf '%s' "$BOOKSTACK_ADMIN_EMAIL" | grep -q '@'; then
   echo "ERRO: BOOKSTACK_ADMIN_EMAIL inválido. O valor deve conter '@'."
@@ -165,14 +162,17 @@ fi
     exit 0
   fi
 
-  echo "Processo auxiliar: aguardando BookStack responder..."
+  echo "Processo auxiliar: aguardando BookStack responder localmente..."
+  BOOKSTACK_READY=0
   for i in $(seq 1 300); do
     if command -v curl >/dev/null 2>&1; then
       if curl -fsS "http://127.0.0.1/api/docs" >/dev/null 2>&1 || curl -fsS "http://127.0.0.1" >/dev/null 2>&1; then
+        BOOKSTACK_READY=1
         break
       fi
     elif command -v wget >/dev/null 2>&1; then
       if wget -q -O - "http://127.0.0.1/api/docs" >/dev/null 2>&1 || wget -q -O - "http://127.0.0.1" >/dev/null 2>&1; then
+        BOOKSTACK_READY=1
         break
       fi
     else
@@ -188,11 +188,22 @@ for url in ("http://127.0.0.1/api/docs", "http://127.0.0.1"):
 raise SystemExit(1)
 PY
       then
+        BOOKSTACK_READY=1
         break
       fi
     fi
     sleep 1
   done
+
+  if [ "$BOOKSTACK_READY" -ne 1 ]; then
+    echo "BookStack não respondeu localmente a tempo; ignorando bootstrap de admin/seed (MVP)."
+    exit 0
+  fi
+
+  echo "BookStack respondeu localmente; iniciando proxy 7860 -> 80..."
+  socat TCP-LISTEN:7860,fork,reuseaddr TCP:127.0.0.1:80 &
+
+  echo "Proxy iniciado; executando bootstrap de admin/seed..."
 
   php /app/www/artisan bookstack:create-admin \
     --name "${BOOKSTACK_ADMIN_NAME}" \
