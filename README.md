@@ -53,7 +53,7 @@ BOOKSTACK_API_TOKEN_SECRET=
 ```
 
 Observações:
-- `APP_KEY` pode ser vazio: o `start.sh` gera automaticamente com `php artisan key:generate`.
+- `APP_KEY` deve ser configurado como Secret no Hugging Face no formato `base64:<valor>`.
 - Em deploy público, use segredos do ambiente (HF Secrets) para senhas.
 - Em instalação fresca, faça login com `admin@admin.com` e senha `password` (altere imediatamente após o primeiro acesso).
 - Para criar admin customizado, defina **ambas** `BOOKSTACK_ADMIN_EMAIL` e `BOOKSTACK_ADMIN_PASSWORD` (opcionalmente `BOOKSTACK_ADMIN_NAME`).
@@ -103,19 +103,20 @@ docker run --rm -p 7860:80 \
    - `DB_ROOT_PASSWORD`
    - `BOOKSTACK_API_TOKEN_ID`
    - `BOOKSTACK_API_TOKEN_SECRET`
-4. Iniciar o Space; a aplicação sobe na porta `80`.
+4. Iniciar o Space; o Hugging Face expõe a porta `7860` e, internamente, o proxy encaminha para o BookStack na porta `80`.
 
-### Configurar token de API e executar seed manual via GitHub Actions
+### Fluxo validado para executar o seed
 
-Como o comando `bookstack:api-token:create` não é utilizado no bootstrap, o token precisa ser criado manualmente pela interface do BookStack:
-
-1. Em instalação fresca, acesse o Space e faça login com `admin@admin.com` / `password`.
-2. Na interface do BookStack, crie um token de API para esse usuário.
-3. Copie o **Token ID** e o **Token Secret** gerados.
-4. No GitHub do repositório, adicione os Secrets em **Settings > Secrets and variables > Actions > Repository secrets**:
+1. Aguardar o Hugging Face Space subir.
+2. Acessar `https://franciscoteston-wikidai.hf.space`.
+3. Em instalação fresca, fazer login com `admin@admin.com` / `password`.
+4. Trocar a senha imediatamente no primeiro acesso.
+5. Criar API Token no perfil do usuário admin no BookStack.
+6. Salvar no GitHub Repository secrets:
    - `BOOKSTACK_API_TOKEN_ID`
    - `BOOKSTACK_API_TOKEN_SECRET`
-5. Execute o seed manual sem reiniciar o Space em **Actions > Seed BookStack > Run workflow**.
+7. Rodar no GitHub: **Actions > Seed BookStack > Run workflow**.
+8. Confirmar no BookStack a criação do livro **Manual do Banco de Dados de Mercado — DAI / SBDS**.
 
 ### Uso rápido do workflow manual (sem deploy)
 
@@ -127,6 +128,38 @@ Como o comando `bookstack:api-token:create` não é utilizado no bootstrap, o to
 ```bash
 python3 scripts/seed_bookstack.py seed/manual_banco_mercado.json
 ```
+
+
+## Marco validado do MVP
+
+- **Data:** maio/2026.
+- **Status:** MVP funcional validado.
+- **Ambiente:** Hugging Face Space `franciscoteston/wikiDAI`.
+- **Repositório principal:** GitHub `franciscoteston/wikiDAI`.
+- BookStack sobe no Space e fica acessível publicamente.
+- Login inicial padrão funciona: `admin@admin.com` / `password`.
+- A senha foi alterada no primeiro acesso após bootstrap.
+- Seed manual via GitHub Actions validado com sucesso contra `https://franciscoteston-wikidai.hf.space`.
+- Conteúdo inicial criado: livro **Manual do Banco de Dados de Mercado — DAI / SBDS**, com 4 capítulos e páginas previstas.
+- **Observação:** enquanto o banco estiver efêmero, reinícios do Space podem apagar usuário, token e conteúdo.
+
+## Decisões técnicas do MVP
+
+- O Hugging Face Space é ambiente de demonstração, não produção.
+- O GitHub é a fonte principal do código.
+- O seed foi separado do deploy para evitar reiniciar o Space.
+- O token de API é criado manualmente pela interface do BookStack.
+- O banco ainda deve ser tratado como efêmero no MVP.
+- A persistência real do banco fica para etapa posterior, preferencialmente com banco externo ou volume validado.
+
+## Próximas etapas
+
+- Refinar conteúdo do manual no arquivo `seed/manual_banco_mercado.json`.
+- Avaliar persistência real do banco.
+- Avaliar banco externo.
+- Automatizar bootstrap completo sem depender de token manual, se tecnicamente viável.
+- Criar novos livros para outros manuais/processos da DAI.
+- Melhorar governança do conteúdo: revisão, versionamento e atualização.
 
 ## Idempotência do seed
 
