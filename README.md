@@ -178,3 +178,43 @@ Assim, executar o seed novamente não duplica dados.
 - `seed/manual_banco_mercado.json`
 - `docs/estrutura-bookstack.md`
 - `.gitignore`
+
+## Persistência experimental com Hugging Face Storage Bucket
+
+> Objetivo: manter usuário, senha alterada, token de API e conteúdo do BookStack após restart do Space, **apenas para demonstração gerencial**.
+
+### Como habilitar
+
+1. Anexe um **Storage Bucket** ao Space, montado em `/data`.
+2. Configure as Variables no Space:
+
+```bash
+USE_DATA_FOR_DB=true
+PERSISTENT_DB_DIR=/data/wikidai-mariadb
+PERSISTENT_CONFIG_DIR=/data/wikidai-bookstack
+RESET_DB_ON_START=false
+```
+
+3. Mantenha `APP_KEY`, `DB_PASSWORD` e `DB_ROOT_PASSWORD` como **Secrets** (não versionar no repositório).
+4. Reinicie o Space.
+5. Faça login no BookStack, troque a senha do admin, crie token de API e execute o seed.
+6. Reinicie o Space novamente para validar se usuário/senha/token/conteúdo persistiram.
+
+### Comportamento esperado
+
+- `USE_DATA_FOR_DB=false` (padrão): mantém modo efêmero em `/tmp/wikidai-mariadb`.
+- `USE_DATA_FOR_DB=true`: usa persistência experimental em `/data` para MariaDB e diretórios seletivos do BookStack.
+- `RESET_DB_ON_START=true`: apaga **somente** `DB_DIR`; com persistência ativa, isso remove o banco persistente.
+
+### Troubleshooting
+
+Se aparecer erro de permissão do InnoDB (ex.: **OS error 13**), volte para:
+
+```bash
+USE_DATA_FOR_DB=false
+```
+
+### Aviso importante
+
+Storage Bucket no `/data` é suficiente para **demonstração do MVP**, mas **não é recomendação de produção**. 
+Para produção, avaliar banco externo gerenciado e arquitetura dedicada de persistência.
