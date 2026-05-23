@@ -10,6 +10,8 @@ export DB_PASSWORD="${DB_PASSWORD:-bookstack}"
 export DB_SOCKET=""
 export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootbookstack}"
 USE_DATA_FOR_DB="${USE_DATA_FOR_DB:-false}"
+PERSISTENT_DB_DIR="${PERSISTENT_DB_DIR:-/data/wikidai-mariadb}"
+PERSISTENT_CONFIG_DIR="${PERSISTENT_CONFIG_DIR:-/data/wikidai-bookstack}"
 
 export APP_URL="${APP_URL:-https://franciscoteston-wikidai.hf.space}"
 export APP_KEY="${APP_KEY:-}"
@@ -22,39 +24,46 @@ if [ -z "${APP_KEY:-}" ]; then
   exit 1
 fi
 
-# Persistência opcional em /data (uploads no MVP; banco somente quando explicitamente habilitado)
-if [ -d "/data" ]; then
-  mkdir -p /data/bookstack_uploads
-  chown -R abc:abc /data/bookstack_uploads
-fi
-
-# Configuração MariaDB
 mkdir -p /run/mysqld
 chown -R mysql:mysql /run/mysqld
 
 if [ "${USE_DATA_FOR_DB}" = "true" ]; then
-  DB_DIR="/data/mariadb"
+  if [ ! -d "/data" ]; then
+    echo "ERRO: USE_DATA_FOR_DB=true, mas /data não existe."
+    echo "Fallback recomendado: USE_DATA_FOR_DB=false para usar banco efêmero em /tmp/wikidai-mariadb."
+    exit 1
+  fi
+
+  DB_DIR="$PERSISTENT_DB_DIR"
+  echo "Persistência via Storage Bucket ativada."
+  echo "DB_DIR=$DB_DIR"
+  echo "PERSISTENT_CONFIG_DIR=$PERSISTENT_CONFIG_DIR"
+
+  mkdir -p "$PERSISTENT_CONFIG_DIR" "$PERSISTENT_CONFIG_DIR/uploads" "$PERSISTENT_CONFIG_DIR/files" "$PERSISTENT_CONFIG_DIR/images" "$PERSISTENT_CONFIG_DIR/themes" "$PERSISTENT_CONFIG_DIR/framework/cache" "$PERSISTENT_CONFIG_DIR/framework/sessions" "$PERSISTENT_CONFIG_DIR/framework/views" "$PERSISTENT_CONFIG_DIR/framework/purifier" "$PERSISTENT_CONFIG_DIR/backups" "$PERSISTENT_CONFIG_DIR/log/bookstack"
+  chmod -R 777 "$PERSISTENT_CONFIG_DIR" || true
+  chown -R abc:abc "$PERSISTENT_CONFIG_DIR" || true
 else
   DB_DIR="/tmp/wikidai-mariadb"
+  echo "Persistência do banco desativada; usando banco efêmero em /tmp."
 fi
-echo "Usando DB_DIR=$DB_DIR"
+
 mkdir -p "$DB_DIR"
-chown -R mysql:mysql "$DB_DIR"
+chmod 777 "$DB_DIR" || true
+chown -R mysql:mysql "$DB_DIR" || true
 chmod -R 700 "$DB_DIR" || true
 
 if [ "${RESET_DB_ON_START:-false}" = "true" ]; then
-  echo "ATENÇÃO: RESET_DB_ON_START=true; apagando banco MariaDB em $DB_DIR"
+  echo "ATENÇÃO FORTE: RESET_DB_ON_START=true; apagando TODO o banco MariaDB em $DB_DIR"
+  echo "ATENÇÃO FORTE: com USE_DATA_FOR_DB=true isso apaga o banco persistente no Storage Bucket."
   if [ -S "$MYSQL_SOCKET" ]; then
     mariadb-admin --protocol=socket -S "$MYSQL_SOCKET" -uroot shutdown >/dev/null 2>&1 || true
   fi
   rm -rf "$DB_DIR"
   mkdir -p "$DB_DIR"
-  chown -R mysql:mysql "$DB_DIR"
+  chmod 777 "$DB_DIR" || true
+  chown -R mysql:mysql "$DB_DIR" || true
   chmod -R 700 "$DB_DIR" || true
 fi
-
-chown -R mysql:mysql "$DB_DIR"
-chmod -R 700 "$DB_DIR" || true
 
 if [ ! -d "$DB_DIR/mysql" ]; then
   mariadb-install-db --user=mysql --datadir="$DB_DIR" >/dev/null
@@ -68,7 +77,6 @@ mariadbd \
   --bind-address=127.0.0.1 \
   --port=3306 &
 
-# Espera banco
 echo "Aguardando MariaDB via socket..."
 MYSQL_READY=0
 for i in $(seq 1 60); do
@@ -81,6 +89,9 @@ done
 
 if [ "$MYSQL_READY" -ne 1 ]; then
   echo "MariaDB não ficou disponível via socket em tempo hábil."
+  if [ "${USE_DATA_FOR_DB}" = "true" ]; then
+    echo "Se houver erro de permissão (ex.: InnoDB OS error 13), use fallback: USE_DATA_FOR_DB=false."
+  fi
   exit 1
 fi
 echo "MariaDB disponível."
@@ -100,22 +111,20 @@ GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 SQL
 
-# Preparação de diretórios persistentes em /config
-mkdir -p \
-  /config/www/uploads \
-  /config/www/files \
-  /config/www/images \
-  /config/www/themes \
-  /config/www/framework/cache \
-  /config/www/framework/sessions \
-  /config/www/framework/views \
-  /config/www/framework/purifier \
-  /config/backups \
-  /config/log/bookstack
+mkdir -p /config/www/uploads /config/www/files /config/www/images /config/www/themes /config/www/framework/cache /config/www/framework/sessions /config/www/framework/views /config/www/framework/purifier /config/backups /config/log/bookstack
 
 touch /config/log/bookstack/laravel.log
 chown -R abc:abc /config/www /config/backups /config/log/bookstack || true
 chmod -R ug+rwX /config/www /config/backups /config/log/bookstack || true
+
+if [ "${USE_DATA_FOR_DB}" = "true" ]; then
+  echo "Aplicando symlinks seletivos de persistência para BookStack..."
+  rm -rf /config/www/uploads /config/www/files /config/www/images /config/backups
+  ln -s "$PERSISTENT_CONFIG_DIR/uploads" /config/www/uploads
+  ln -s "$PERSISTENT_CONFIG_DIR/files" /config/www/files
+  ln -s "$PERSISTENT_CONFIG_DIR/images" /config/www/images
+  ln -s "$PERSISTENT_CONFIG_DIR/backups" /config/backups
+fi
 
 # Configuração BookStack
 echo "Configurando .env do BookStack..."
@@ -165,7 +174,6 @@ if [ -n "$BOOKSTACK_ADMIN_EMAIL" ] || [ -n "$BOOKSTACK_ADMIN_PASSWORD" ]; then
 fi
 
 (
-
   echo "Processo auxiliar: aguardando BookStack responder localmente..."
   BOOKSTACK_READY=0
   for i in $(seq 1 300); do
@@ -214,8 +222,7 @@ PY
     ADMIN_CREATE_OUTPUT=$(php /app/www/artisan bookstack:create-admin       --name "${BOOKSTACK_ADMIN_NAME:-Admin}"       --email "${BOOKSTACK_ADMIN_EMAIL}"       --password "${BOOKSTACK_ADMIN_PASSWORD}" 2>&1)
     ADMIN_CREATE_STATUS=$?
     set -e
-    printf '%s
-' "$ADMIN_CREATE_OUTPUT"
+    printf '%s\n' "$ADMIN_CREATE_OUTPUT"
 
     if [ "$ADMIN_CREATE_STATUS" -eq 0 ]; then
       echo "Admin customizado criado com sucesso."
