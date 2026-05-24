@@ -95,8 +95,21 @@ if [ "$MYSQL_READY" -ne 1 ]; then
   exit 1
 fi
 echo "MariaDB disponível."
+ROOT_AUTH_MODE=""
+if mariadb --protocol=socket -S "$MYSQL_SOCKET" -uroot --password="${DB_ROOT_PASSWORD}" -e "SELECT 1" >/dev/null 2>&1; then
+  ROOT_AUTH_MODE="password"
+  echo "Autenticação root MariaDB: usando senha existente."
+elif mariadb --protocol=socket -S "$MYSQL_SOCKET" -uroot -e "SELECT 1" >/dev/null 2>&1; then
+  ROOT_AUTH_MODE="no_password"
+  echo "Autenticação root MariaDB: sem senha inicial; definindo DB_ROOT_PASSWORD."
+else
+  echo "ERRO: não foi possível autenticar como root no MariaDB. Verifique DB_ROOT_PASSWORD ou reinicialize o banco."
+  exit 1
+fi
+
 echo "Criando banco e usuário..."
-mariadb --protocol=socket -S "$MYSQL_SOCKET" -uroot <<SQL
+if [ "$ROOT_AUTH_MODE" = "password" ]; then
+  mariadb --protocol=socket -S "$MYSQL_SOCKET" -uroot --password="${DB_ROOT_PASSWORD}" <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
 CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
@@ -110,6 +123,22 @@ GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'localhost';
 GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 SQL
+else
+  mariadb --protocol=socket -S "$MYSQL_SOCKET" -uroot <<SQL
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
+CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+ALTER USER '${DB_USERNAME}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+ALTER USER '${DB_USERNAME}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
+ALTER USER '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'localhost';
+GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'%';
+FLUSH PRIVILEGES;
+SQL
+fi
 
 mkdir -p /config/www/uploads /config/www/files /config/www/images /config/www/themes /config/www/framework/cache /config/www/framework/sessions /config/www/framework/views /config/www/framework/purifier /config/backups /config/log/bookstack
 

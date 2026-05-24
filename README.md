@@ -196,9 +196,11 @@ RESET_DB_ON_START=false
 ```
 
 3. Mantenha `APP_KEY`, `DB_PASSWORD` e `DB_ROOT_PASSWORD` como **Secrets** (não versionar no repositório).
-4. Reinicie o Space.
-5. Faça login no BookStack, troque a senha do admin, crie token de API e execute o seed.
-6. Reinicie o Space novamente para validar se usuário/senha/token/conteúdo persistiram.
+4. Com `USE_DATA_FOR_DB=true`, mantenha `DB_ROOT_PASSWORD` **estável entre restarts**.
+5. Se `DB_ROOT_PASSWORD` for alterado após o banco persistente já existir, o startup pode falhar com `Access denied for user 'root'@'localhost'`.
+6. Reinicie o Space.
+7. Faça login no BookStack, troque a senha do admin, crie token de API e execute o seed.
+8. Reinicie o Space novamente para validar se usuário/senha/token/conteúdo persistiram.
 
 ### Comportamento esperado
 
